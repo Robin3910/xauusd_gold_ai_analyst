@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "ai-hedge-fund"
+name = "xauusd-gold-ai-analyst"
 version = "1.0.0"
-description = "An AI-powered hedge fund that uses multiple agents to make trading decisions"
+description = "XAUUSD Gold AI Analyst - Multi-agent AI system for gold trading analysis"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 packages = [
@@ -38,6 +38,10 @@ alembic = "^1.12.0"
 langchain-gigachat = "^0.3.12"
 langchain-xai = "^0.2.5"
 scipy = "^1.11.0"
+
+# Data source dependencies
+yfinance = "^0.2.40"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

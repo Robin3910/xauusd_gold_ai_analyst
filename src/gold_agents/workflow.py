@@ -4,15 +4,16 @@ Gold Analysis Workflow
 LangGraph workflow for XAUUSD multi-agent analysis system.
 """
 
-from typing import TypedDict, Annotated, Sequence
-import operator
-from langchain_core.messages import BaseMessage, HumanMessage
+from typing import Optional
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
+from datetime import datetime, timedelta
 
 from src.graph.state import AgentState as BaseAgentState
 from src.gold_agents.config import get_gold_analyst_nodes
 from src.gold_agents.risk_manager import gold_risk_manager_agent
 from src.gold_agents.portfolio_manager import gold_portfolio_manager_agent
+from src.data_sources.client import GoldDataClient
 
 
 def start_node(state: BaseAgentState) -> BaseAgentState:
@@ -82,6 +83,7 @@ def run_gold_analysis(
     macro_data: dict = None,
     fundamental_data: dict = None,
     sentiment_data: dict = None,
+    auto_fetch_data: bool = True,
 ) -> dict:
     """
     Run the gold analysis workflow.
@@ -100,18 +102,33 @@ def run_gold_analysis(
         macro_data: Macroeconomic indicators
         fundamental_data: Gold fundamental data
         sentiment_data: Market sentiment data
+        auto_fetch_data: If True, automatically fetch missing data
     
     Returns:
         Analysis results including recommendation
     """
     from src.utils.progress import progress
-    from datetime import datetime, timedelta
     
     # Default dates
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
     if start_date is None:
         start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+    
+    # Auto-fetch missing data
+    if auto_fetch_data and (prices_df is None or macro_data is None):
+        client = GoldDataClient(
+            start_date=start_date,
+            end_date=end_date,
+        )
+        client.fetch_all()
+        analysis_data = client.get_analysis_data()
+        
+        prices_df = prices_df or analysis_data["prices_df"]
+        macro_data = macro_data or analysis_data["macro_data"]
+        news_data = news_data or analysis_data["news_data"]
+        fundamental_data = fundamental_data or analysis_data["fundamental_data"]
+        sentiment_data = sentiment_data or analysis_data["sentiment_data"]
     
     # Default portfolio
     if portfolio is None:
@@ -170,3 +187,31 @@ def run_gold_analysis(
         
     finally:
         progress.stop()
+
+
+def quick_gold_analysis(
+    symbol: str = "XAUUSD",
+    days_back: int = 180,
+    show_reasoning: bool = False,
+) -> dict:
+    """
+    Quick analysis with automatic data fetching.
+    
+    Args:
+        symbol: Trading symbol
+        days_back: Days of historical data
+        show_reasoning: Show detailed reasoning
+    
+    Returns:
+        Analysis results
+    """
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    
+    return run_gold_analysis(
+        symbol=symbol,
+        start_date=start_date,
+        end_date=end_date,
+        auto_fetch_data=True,
+        show_reasoning=show_reasoning,
+    )
